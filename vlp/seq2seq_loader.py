@@ -7,6 +7,7 @@ from collections import namedtuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import pdb
 
 from vlp.loader_utils import get_random_word, batch_list_to_batch_tensors, Pipeline
 
@@ -84,39 +85,47 @@ class Img2txtDataset(torch.utils.data.Dataset):
                 # raw inputs are given
                 img_dat = json.load(f_src)['images']
                 counter = 0
-
                 if not os.path.isfile(file_valid_jpgs):
+                    gpv_caption_ids = json.load(open('/home/amitak/data/learning_phase_data/coco_captions/gpv_split/cap_ids_train.json', 'r'))
+                    gpv_caption_ids = {cid: 1 for cid in gpv_caption_ids}
                     valid_img = {}
-                    for src in img_dat:
-                        if src['split'] in split:
-                            if use_num_imgs == -1 or counter < use_num_imgs:
-                                if enable_butd:
-                                    src_tk = os.path.join(image_root, src.get('filepath', 'trainval'),
-                                        src['filename'][:-4]+'.npy')
-                                    for sent in src['sentences']:
-                                        tgt_tk = tokenizer.tokenize(sent['raw'])
-                                        assert len(tgt_tk) > 0
-                                        self.ex_list.append((src_tk, tgt_tk, {'answers': ['dummy']}))
-                                        if counter%10000 == 0:
-                                            print(src_tk, tgt_tk)
+                    #pdb.set_trace()
+                    for src in [d for d in img_dat if d['split'] == 'train']:
+                        #pdb.set_trace()
+                        if use_num_imgs == -1 or counter < use_num_imgs:
+                            if enable_butd:
+                                src_tk = os.path.join(image_root, src.get('filepath', 'trainval'),
+                                    src['filename'][:-4]+'.npy')
+                                count_flag = False
+                                for sent_no, sent in enumerate(src['sentences']):
+                                    if src['sentids'][sent_no] not in gpv_caption_ids:
+                                        continue
+                                    count_flag = True
+                                    tgt_tk = tokenizer.tokenize(sent['raw'])
+                                    assert len(tgt_tk) > 0
+                                    self.ex_list.append((src_tk, tgt_tk, {'answers': ['dummy']}))
+                                    if counter%10000 == 0:
+                                        print(src_tk, tgt_tk)
+                                if count_flag:  # if ex_list expanded
                                     counter += 1
-                                else:
-                                    src_tk = os.path.join(image_root, src.get('filepath', ''),
-                                        src['filename'])
-                                    # check if the image is valid
-                                    if os.stat(src_tk).st_size > 0 and imghdr.what(src_tk) == 'jpeg':
-                                        try:
-                                            Image.open(src_tk)
-                                            for sent in src['sentences']:
-                                                tgt_tk = tokenizer.tokenize(sent['raw'])
-                                                assert len(tgt_tk) > 0
-                                                self.ex_list.append((src_tk, tgt_tk, {'answers': ['dummy']}))
-                                            valid_img[src['filename']] = src['filename']
-                                            counter += 1
-                                        except:
-                                            pass
-                    json.dump(valid_img, open(file_valid_jpgs, 'w'))
-                    print('Saving {0} valid JPG IDs'.format(len(valid_img)))
+                            else:
+                                src_tk = os.path.join(image_root, src.get('filepath', ''),
+                                    src['filename'])
+                                # check if the image is valid
+                                if os.stat(src_tk).st_size > 0 and imghdr.what(src_tk) == 'jpeg':
+                                    try:
+                                        Image.open(src_tk)
+                                        for sent in src['sentences']:
+                                            tgt_tk = tokenizer.tokenize(sent['raw'])
+                                            assert len(tgt_tk) > 0
+                                            self.ex_list.append((src_tk, tgt_tk, {'answers': ['dummy']}))
+                                        valid_img[src['filename']] = src['filename']
+                                        counter += 1
+                                    except:
+                                        pass
+                    #json.dump(valid_img, open(file_valid_jpgs, 'w'))
+                    #print('Saving {0} valid JPG IDs'.format(len(valid_img)))
+                    print('Length of ex_list is {}'.format(len(self.ex_list)))
                 else:
                     valid_jpgs = set(json.load(open(file_valid_jpgs)))
                     print('Loading {0} valid JPG IDs!'.format(len(valid_jpgs)))

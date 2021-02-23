@@ -15,6 +15,7 @@ import numpy as np
 import torch
 import random
 import pickle
+import pdb
 
 from pytorch_pretrained_bert.tokenization import BertTokenizer, WhitespaceTokenizer
 from pytorch_pretrained_bert.modeling import BertForSeq2SeqDecoder
@@ -185,13 +186,21 @@ def main():
         # cnn.eval()
 
         eval_lst = []
+        #pdb.set_trace()
+        gpv_image_ids = json.load(open('/home/amitak/data/learning_phase_data/coco_captions/gpv_split/image_ids_val.json', 'r'))[:100]
+        gpv_image_ids = {imid: 1 for imid in gpv_image_ids}
+        img_to_cap = {}
         with open(args.src_file, "r", encoding='utf-8') as f_src:
             img_dat = json.load(f_src)['images']
             img_idx = 0
-            valid_jpgs = None if (args.file_valid_jpgs == '' or args.dataset in \
-                ('coco', 'flickr30k')) else json.load(open(args.file_valid_jpgs))
+            valid_jpgs = None #if (args.file_valid_jpgs == '' or args.dataset in \
+            #    ('coco', 'flickr30k')) else json.load(open(args.file_valid_jpgs))
+            # You're just reading the image, not each caption
             for src in img_dat:
-                if src['split'] == args.split and (valid_jpgs is None or src['filename'] in valid_jpgs):
+                #if src['split'] == args.split and (valid_jpgs is None or src['filename'] in valid_jpgs):
+                image_id = int(src['filename'].split('_')[2][:-4])
+                if image_id in gpv_image_ids:
+                    img_to_cap[image_id] = src['sentids']
                     if args.enable_butd:
                         src_tk = os.path.join(args.image_root, src.get('filepath', 'trainval'), src['filename'][:-4]+'.npy')
                     else:
@@ -259,7 +268,18 @@ def main():
 
                 pbar.update(1)
 
+        # This is all I need: 
+        pdb.set_trace()
         predictions = [{'image_id': tup[1], 'caption': output_lines[img_idx]} for img_idx, tup in enumerate(input_lines)]
+        gpv_caption_ids = json.load(open('/home/amitak/data/learning_phase_data/coco_captions/gpv_split/cap_ids_val.json', 'r'))
+        final_predictions = {c: {'answer': p['caption']} for p in predictions for c in img_to_cap[p['image_id']] if c in gpv_caption_ids}
+        json.dump(final_predictions, open('vlp_preds.json', 'w'))
+        """
+        new_predictions = []
+        for p in predictions:
+            num_caps = len([c for c in img_to_cap[p['image_id']] if c in gpv_caption_ids])
+            new_predictions.extend([p]*num_caps)
+        """
 
         lang_stats = language_eval(args.dataset, predictions, args.model_recover_path.split('/')[-2]+'-'+args.split+'-'+args.model_recover_path.split('/')[-1].split('.')[-2], args.split)
 

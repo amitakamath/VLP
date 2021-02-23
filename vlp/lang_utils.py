@@ -8,7 +8,8 @@ def language_eval(dataset, preds, model_id, split):
     import sys
     sys.path.append("coco-caption")
     if dataset == 'coco':
-        annFile = 'coco-caption/annotations/captions_val2014.json'
+        annFile = 'coco-caption/annotations/captions_train2014.json'
+        #annFile = 'coco-caption/annotations/captions_val2014.json'
     elif dataset == 'flickr30k':
         annFile = 'coco-caption/annotations/caption_flickr30k.json'
     elif dataset == 'cc':

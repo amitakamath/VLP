@@ -1,0 +1,1 @@
+python3 vlp/run_img2txt_dist.py --output_dir checkpoints/trial/ --do_train --new_segment_ids --always_truncate_tail --amp --src_file data/COCO/annotations/dataset_coco.json --file_valid_jpgs data/COCO/annotations/coco_valid_jpgs.json --image_root data/COCO/region_feat_gvd_wo_bgd --enable_butd --s2s_prob 1 --bi_prob 0
